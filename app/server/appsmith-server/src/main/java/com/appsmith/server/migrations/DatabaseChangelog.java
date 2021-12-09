@@ -3966,7 +3966,9 @@ public class DatabaseChangelog {
         Index uniqueApplicationIdIndex = new Index()
                 .unique()
                 .on(fieldName(QTheme.theme.applicationId), Sort.Direction.ASC)
-                .partial(PartialIndexFilter.of(Criteria.where(fieldName(QTheme.theme.applicationId)).exists(true)))
+                .on(fieldName(QTheme.theme.applicationMode), Sort.Direction.ASC)
+                .partial(PartialIndexFilter.of(Criteria.where(fieldName(QTheme.theme.applicationId)).exists(true)
+                        .and(fieldName(QTheme.theme.applicationMode)).exists(true)))
                 .named("unique_application_id_index");
 
         ensureIndexes(mongockTemplate.getImpl(), Theme.class, uniqueApplicationIdIndex);
@@ -3977,15 +3979,17 @@ public class DatabaseChangelog {
         );
         Theme[] themes = new Gson().fromJson(themesJson, Theme[].class);
 
+        Theme legacyTheme = null;
         for (Theme theme : themes) {
-            mongockTemplate.save(theme);
+            Theme savedTheme = mongockTemplate.save(theme);
+            if(savedTheme.getName().equalsIgnoreCase(Theme.LEGACY_THEME_NAME)) {
+                legacyTheme = savedTheme;
+            }
         }
 
-        // migrate all applications and set classic theme to them
-        String fieldName = String.format("%s.%s",
-                fieldName(QApplication.application.appTheme), fieldName(QApplication.application.appTheme.currentTheme));
-
-        Update update = new Update().set(fieldName, "classic");
+        // migrate all applications and set legacy theme to them in both mode
+        Update update = new Update().set(fieldName(QApplication.application.publishedModeThemeId), legacyTheme.getId())
+                .set(fieldName(QApplication.application.editModeThemeId), legacyTheme.getId());
         mongockTemplate.updateMulti(
                 new Query(where(fieldName(QApplication.application.deleted)).is(false)), update, Application.class
         );

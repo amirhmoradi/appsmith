@@ -10,7 +10,7 @@ import com.appsmith.server.constants.FieldName;
 import com.appsmith.server.domains.ActionCollection;
 import com.appsmith.server.domains.Application;
 import com.appsmith.server.domains.ApplicationPage;
-import com.appsmith.server.domains.CommentMode;
+import com.appsmith.server.domains.ApplicationMode;
 import com.appsmith.server.domains.GitApplicationMetadata;
 import com.appsmith.server.domains.Layout;
 import com.appsmith.server.domains.NewAction;
@@ -598,7 +598,7 @@ public class ApplicationPageServiceImpl implements ApplicationPageService {
                             }).collectList();
 
                     Mono<UpdateResult> archiveCommentThreadMono = commentThreadRepository.archiveByPageId(
-                            id, CommentMode.EDIT
+                            id, ApplicationMode.EDIT
                     );
 
                     /**
@@ -673,7 +673,7 @@ public class ApplicationPageServiceImpl implements ApplicationPageService {
                     Mono<List<Boolean>> archivePageListMono;
                     if (!publishedPageIds.isEmpty()) {
                         archivePageListMono = Flux.fromStream(publishedPageIds.stream())
-                                .flatMap(id -> commentThreadRepository.archiveByPageId(id, CommentMode.PUBLISHED)
+                                .flatMap(id -> commentThreadRepository.archiveByPageId(id, ApplicationMode.PUBLISHED)
                                         .then(newPageService.archiveById(id))
                                 )
                                 .collectList();

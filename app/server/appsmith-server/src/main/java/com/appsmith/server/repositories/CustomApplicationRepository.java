@@ -37,5 +37,5 @@ public interface CustomApplicationRepository extends AppsmithRepository<Applicat
 
     Mono<List<String>> getAllApplicationId(String organizationId);
 
-    Mono<UpdateResult> setAppTheme(String applicationId, String themeSlug, boolean isCustomized, AclPermission aclPermission);
+    Mono<UpdateResult> setEditModeAppTheme(String applicationId, String themeId, AclPermission aclPermission);
 }

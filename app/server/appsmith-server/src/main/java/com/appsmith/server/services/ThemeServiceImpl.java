@@ -2,6 +2,7 @@ package com.appsmith.server.services;
 
 import com.appsmith.server.acl.AclPermission;
 import com.appsmith.server.constants.FieldName;
+import com.appsmith.server.domains.ApplicationMode;
 import com.appsmith.server.domains.Theme;
 import com.appsmith.server.exceptions.AppsmithError;
 import com.appsmith.server.exceptions.AppsmithException;
@@ -53,16 +54,16 @@ public class ThemeServiceImpl extends BaseService<ThemeRepository, Theme, String
     }
 
     @Override
-    public Mono<Theme> getApplicationTheme(String applicationId) {
-        return applicationRepository.findById(applicationId, AclPermission.MANAGE_APPLICATIONS)
+    public Mono<Theme> getApplicationTheme(String applicationId, ApplicationMode applicationMode) {
+        return applicationRepository.findById(applicationId, AclPermission.READ_APPLICATIONS)
                 .switchIfEmpty(Mono.error(
                         new AppsmithException(AppsmithError.NO_RESOURCE_FOUND, FieldName.APPLICATION, applicationId))
                 )
                 .flatMap(application -> {
-                    if(application.getAppTheme().isCustomized()) {
-                        return repository.getCustomizedTheme(applicationId);
+                    if(applicationMode == ApplicationMode.EDIT) {
+                        return repository.findById(application.getEditModeThemeId());
                     } else {
-                        return repository.findSystemThemeBySlug(application.getAppTheme().getCurrentTheme());
+                        return repository.findById(application.getPublishedModeThemeId());
                     }
                 });
     }
@@ -73,11 +74,12 @@ public class ThemeServiceImpl extends BaseService<ThemeRepository, Theme, String
                 .flatMap(application -> {
                     // makes sure user has permission to edit application and an application exists by this applicationId
                     // check if this application has already a customized them
-                    Mono<Theme> saveThemeMono = repository.getCustomizedTheme(applicationId)
+                    return repository.getByApplicationAndMode(applicationId, ApplicationMode.EDIT)
                             .defaultIfEmpty(new Theme())
                             .flatMap(theme -> {
                                 theme.setApplicationId(applicationId);
-                                theme.setSlug(application.getAppTheme().getCurrentTheme());
+                                theme.setApplicationMode(ApplicationMode.EDIT);
+
                                 if(resource.getConfig() != null) {
                                     theme.setConfig(resource.getConfig());
                                 }
@@ -89,11 +91,9 @@ public class ThemeServiceImpl extends BaseService<ThemeRepository, Theme, String
                                 }
                                 theme.setName(resource.getName());
                                 return repository.save(theme);
-                            });
-
-                    return applicationRepository.setAppTheme(
-                            applicationId, application.getAppTheme().getCurrentTheme(), true, AclPermission.MANAGE_APPLICATIONS
-                    ).then(saveThemeMono);
+                            }).flatMap(savedTheme -> applicationRepository.setEditModeAppTheme(
+                                    applicationId, savedTheme.getId(), AclPermission.MANAGE_APPLICATIONS
+                            ).thenReturn(savedTheme));
                 });
     }
 
@@ -102,8 +102,16 @@ public class ThemeServiceImpl extends BaseService<ThemeRepository, Theme, String
         return applicationRepository.findById(applicationId, AclPermission.MANAGE_APPLICATIONS)
                 .flatMap(application ->
                     repository.findById(themeId)
-                            .flatMap(theme -> applicationRepository.setAppTheme(applicationId, theme.getSlug(), false, AclPermission.MANAGE_APPLICATIONS)
-                            .thenReturn(theme))
+                            .flatMap(theme -> {
+                                if(theme.getApplicationId() == null) {
+                                    return applicationRepository.setEditModeAppTheme(
+                                            applicationId, themeId, AclPermission.MANAGE_APPLICATIONS
+                                    ).thenReturn(theme);
+                                } else {
+                                    // only system themes are allowed to set i.e. applicationId is null, otherwise error
+                                    return Mono.error(new AppsmithException(AppsmithError.UNSUPPORTED_OPERATION));
+                                }
+                            })
                 );
     }
 }

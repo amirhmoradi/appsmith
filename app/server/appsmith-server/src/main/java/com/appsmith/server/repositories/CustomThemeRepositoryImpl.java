@@ -1,5 +1,6 @@
 package com.appsmith.server.repositories;
 
+import com.appsmith.server.domains.ApplicationMode;
 import com.appsmith.server.domains.QTheme;
 import com.appsmith.server.domains.Theme;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +26,9 @@ public class CustomThemeRepositoryImpl extends BaseAppsmithRepositoryImpl<Theme>
      * @return Flux of themes
      */
     @Override
-    public Mono<Theme> getCustomizedTheme(String applicationId) {
-        Criteria criteria = Criteria.where(fieldName(QTheme.theme.applicationId)).is(applicationId);
+    public Mono<Theme> getByApplicationAndMode(String applicationId, ApplicationMode applicationMode) {
+        Criteria criteria = Criteria.where(fieldName(QTheme.theme.applicationId)).is(applicationId)
+                .and(fieldName(QTheme.theme.applicationMode)).is(applicationMode);
         return queryOne(List.of(criteria), null);
     }
 
@@ -34,12 +36,5 @@ public class CustomThemeRepositoryImpl extends BaseAppsmithRepositoryImpl<Theme>
     public Flux<Theme> getSystemThemes() {
         Criteria criteria = Criteria.where(fieldName(QTheme.theme.applicationId)).exists(false);
         return queryAll(List.of(criteria), null);
-    }
-
-    @Override
-    public Mono<Theme> findSystemThemeBySlug(String themeSlug) {
-        Criteria criteria = Criteria.where(fieldName(QTheme.theme.slug)).is(themeSlug)
-                .and(fieldName(QTheme.theme.applicationId)).exists(false);
-        return queryOne(List.of(criteria), null);
     }
 }

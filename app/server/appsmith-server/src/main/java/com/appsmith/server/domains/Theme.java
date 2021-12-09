@@ -18,16 +18,19 @@ import java.util.Map;
 @Setter
 @Document
 public class Theme extends BaseDomain {
+    public static final String LEGACY_THEME_NAME = "classic";
+    public static final String DEFAULT_THEME_NAME = "default";
+
     @NotNull
     private String name;
-
-    private String slug;
     private ThemeConfig config;
     private Properties properties;
     private Map<String, WidgetStyle> stylesheet;
 
     @JsonIgnore
     private String applicationId;
+    @JsonIgnore
+    private ApplicationMode applicationMode;
 
     @Data
     @AllArgsConstructor

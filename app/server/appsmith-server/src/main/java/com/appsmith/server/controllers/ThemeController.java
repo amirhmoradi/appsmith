@@ -1,6 +1,7 @@
 package com.appsmith.server.controllers;
 
 import com.appsmith.server.constants.Url;
+import com.appsmith.server.domains.ApplicationMode;
 import com.appsmith.server.domains.Theme;
 import com.appsmith.server.dtos.ResponseDTO;
 import com.appsmith.server.services.ThemeService;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -26,8 +28,8 @@ public class ThemeController extends BaseController<ThemeService, Theme, String>
     }
 
     @GetMapping("applications/{applicationId}")
-    public Mono<ResponseDTO<Theme>> getThemes(@PathVariable String applicationId) {
-        return service.getApplicationTheme(applicationId)
+    public Mono<ResponseDTO<Theme>> getThemes(@PathVariable String applicationId, @RequestParam(required = false, defaultValue = "EDIT") ApplicationMode mode) {
+        return service.getApplicationTheme(applicationId, mode)
                 .map(theme -> new ResponseDTO<>(HttpStatus.OK.value(), theme, null));
     }
 
