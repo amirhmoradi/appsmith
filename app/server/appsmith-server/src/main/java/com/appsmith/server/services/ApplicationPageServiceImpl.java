@@ -17,6 +17,7 @@ import com.appsmith.server.domains.NewAction;
 import com.appsmith.server.domains.NewPage;
 import com.appsmith.server.domains.Organization;
 import com.appsmith.server.domains.Page;
+import com.appsmith.server.domains.Theme;
 import com.appsmith.server.domains.User;
 import com.appsmith.server.dtos.ActionCollectionDTO;
 import com.appsmith.server.dtos.ActionDTO;
@@ -29,6 +30,7 @@ import com.appsmith.server.helpers.GitFileUtils;
 import com.appsmith.server.repositories.ApplicationRepository;
 import com.appsmith.server.repositories.CommentThreadRepository;
 import com.appsmith.server.repositories.OrganizationRepository;
+import com.appsmith.server.repositories.ThemeRepository;
 import com.google.common.base.Strings;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +59,6 @@ import static com.appsmith.server.acl.AclPermission.READ_APPLICATIONS;
 import static com.appsmith.server.acl.AclPermission.READ_PAGES;
 import static org.apache.commons.lang.ObjectUtils.defaultIfNull;
 
-;
 
 @Service
 @Slf4j
@@ -77,6 +78,7 @@ public class ApplicationPageServiceImpl implements ApplicationPageService {
     private final ActionCollectionService actionCollectionService;
     private final GitFileUtils gitFileUtils;
     private final CommentThreadRepository commentThreadRepository;
+    private final ThemeRepository themeRepository;
 
     public static final Integer EVALUATION_VERSION = 2;
 
@@ -734,12 +736,35 @@ public class ApplicationPageServiceImpl implements ApplicationPageService {
                 .collectList()
                 .flatMapMany(actionCollectionService::saveAll);
 
+        Mono<UpdateResult> publishThemeMono = applicationMono.flatMap(application ->
+                themeRepository.findById(application.getEditModeThemeId()).flatMap(editModeTheme -> {
+                    if (editModeTheme.getApplicationId() == null) {  // system theme is set as edit mode theme
+                        // just set the system theme id as published theme id to application object
+                        return applicationRepository.setAppTheme(applicationId, application.getEditModeThemeId(), ApplicationMode.PUBLISHED, MANAGE_APPLICATIONS);
+                    } else {  // a customized theme is set as edit mode theme, copy that theme for published mode
+                        return themeRepository.getByApplicationAndMode(applicationId, ApplicationMode.PUBLISHED)
+                                .defaultIfEmpty(new Theme())
+                                .flatMap(theme -> {
+                                    theme.setApplicationId(applicationId);
+                                    theme.setApplicationMode(ApplicationMode.PUBLISHED);
+                                    theme.setConfig(editModeTheme.getConfig());
+                                    theme.setStylesheet(editModeTheme.getStylesheet());
+                                    theme.setProperties(editModeTheme.getProperties());
+                                    theme.setName(editModeTheme.getName());
+                                    return themeRepository.save(theme);
+                                }).flatMap(savedPublishedModeTheme ->
+                                    applicationRepository.setAppTheme(applicationId, savedPublishedModeTheme.getId(), ApplicationMode.PUBLISHED, MANAGE_APPLICATIONS)
+                                );
+                    }
+                })
+        );
+
         return Mono.when(
                 publishApplicationAndPages.collectList(),
                 publishedActionsFlux.collectList(),
-                publishedCollectionsFlux
-        )
-                .then(applicationMono);
+                publishedCollectionsFlux,
+                publishThemeMono
+        ).then(applicationMono);
     }
 
     @Override

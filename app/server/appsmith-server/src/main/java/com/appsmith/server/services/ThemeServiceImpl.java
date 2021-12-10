@@ -91,7 +91,7 @@ public class ThemeServiceImpl extends BaseService<ThemeRepository, Theme, String
                                 }
                                 theme.setName(resource.getName());
                                 return repository.save(theme);
-                            }).flatMap(savedTheme -> applicationRepository.setEditModeAppTheme(
+                            }).flatMap(savedTheme -> applicationRepository.setAppTheme(
                                     applicationId, savedTheme.getId(), AclPermission.MANAGE_APPLICATIONS
                             ).thenReturn(savedTheme));
                 });
@@ -104,7 +104,7 @@ public class ThemeServiceImpl extends BaseService<ThemeRepository, Theme, String
                     repository.findById(themeId)
                             .flatMap(theme -> {
                                 if(theme.getApplicationId() == null) {
-                                    return applicationRepository.setEditModeAppTheme(
+                                    return applicationRepository.setAppTheme(
                                             applicationId, themeId, AclPermission.MANAGE_APPLICATIONS
                                     ).thenReturn(theme);
                                 } else {

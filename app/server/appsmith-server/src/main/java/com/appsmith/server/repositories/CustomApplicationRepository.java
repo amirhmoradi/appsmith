@@ -2,6 +2,7 @@ package com.appsmith.server.repositories;
 
 import com.appsmith.server.acl.AclPermission;
 import com.appsmith.server.domains.Application;
+import com.appsmith.server.domains.ApplicationMode;
 import com.appsmith.server.domains.ApplicationPage;
 import com.appsmith.server.domains.GitAuth;
 import com.mongodb.client.result.UpdateResult;
@@ -37,5 +38,5 @@ public interface CustomApplicationRepository extends AppsmithRepository<Applicat
 
     Mono<List<String>> getAllApplicationId(String organizationId);
 
-    Mono<UpdateResult> setEditModeAppTheme(String applicationId, String themeId, AclPermission aclPermission);
+    Mono<UpdateResult> setAppTheme(String applicationId, String themeId, ApplicationMode applicationMode, AclPermission aclPermission);
 }
